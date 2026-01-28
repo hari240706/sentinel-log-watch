@@ -10,12 +10,16 @@ import {
   Eye,
   Shield,
   Server,
+  Zap,
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { SeverityBadge } from '@/components/shared/SeverityBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ThreatSolutionCard } from '@/components/threats/ThreatSolutionCard';
+import { ThreatComparisonChart } from '@/components/threats/ThreatComparisonChart';
 import { useAppStore, ThreatAlert } from '@/stores/appStore';
+import { useRealTimeData, useThreatComparisonData } from '@/hooks/useRealTimeData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +39,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const statusConfig = {
   active: { label: 'Active', icon: AlertTriangle, className: 'bg-destructive/10 text-destructive border-destructive/30' },
@@ -50,6 +56,13 @@ export default function AlertsPage() {
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedAlert, setSelectedAlert] = useState<ThreatAlert | null>(null);
+  const [realTimeEnabled, setRealTimeEnabled] = useState(true);
+  
+  // Enable real-time data simulation
+  useRealTimeData({ enabled: realTimeEnabled, logInterval: 5000, threatInterval: 20000 });
+  
+  // Get comparison data for charts
+  const comparisonData = useThreatComparisonData();
 
   const filteredAlerts = useMemo(() => {
     let result = [...alerts];
@@ -94,11 +107,30 @@ export default function AlertsPage() {
     return date.toLocaleDateString();
   };
 
+  const handleApplySolution = (alertId: string) => {
+    updateAlertStatus(alertId, 'resolved');
+    setSelectedAlert(null);
+    toast.success('Automated fix applied successfully!', {
+      description: 'The threat has been resolved and the system has been secured.',
+    });
+  };
+
   return (
     <MainLayout>
       <PageHeader
         title="Threat Monitoring"
         description="Monitor and respond to security threats in real-time"
+        actions={
+          <Button
+            variant={realTimeEnabled ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setRealTimeEnabled(!realTimeEnabled)}
+            className={cn(realTimeEnabled && 'bg-success hover:bg-success/90')}
+          >
+            <Zap className={cn('w-4 h-4 mr-2', realTimeEnabled && 'animate-pulse')} />
+            {realTimeEnabled ? 'Live' : 'Paused'}
+          </Button>
+        }
       />
 
       {/* Stats Cards */}
@@ -163,11 +195,21 @@ export default function AlertsPage() {
         </motion.div>
       </div>
 
-      {/* Filters */}
+      {/* Comparison Charts */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
+        className="mb-6"
+      >
+        <ThreatComparisonChart data={comparisonData} />
+      </motion.div>
+
+      {/* Filters */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
         className="mb-6"
       >
         <Card className="cyber-card">
@@ -330,9 +372,9 @@ export default function AlertsPage() {
         )}
       </motion.div>
 
-      {/* Alert Detail Dialog */}
+      {/* Alert Detail Dialog with Solution */}
       <Dialog open={!!selectedAlert} onOpenChange={() => setSelectedAlert(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {selectedAlert && (
             <>
               <DialogHeader>
@@ -343,27 +385,46 @@ export default function AlertsPage() {
                 <DialogDescription>{selectedAlert.description}</DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Source</p>
-                    <p className="text-sm text-foreground">{selectedAlert.source}</p>
+              <Tabs defaultValue="details" className="mt-4">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="solution">Suggested Solution</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="details" className="space-y-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Source</p>
+                      <p className="text-sm text-foreground">{selectedAlert.source}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Timestamp</p>
+                      <p className="text-sm text-foreground">{new Date(selectedAlert.timestamp).toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Timestamp</p>
-                    <p className="text-sm text-foreground">{new Date(selectedAlert.timestamp).toLocaleString()}</p>
-                  </div>
-                </div>
 
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-2">Affected Systems</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedAlert.affectedSystems.map(system => (
-                      <Badge key={system} variant="secondary">{system}</Badge>
-                    ))}
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Affected Systems</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedAlert.affectedSystems.map(system => (
+                        <Badge key={system} variant="secondary">{system}</Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </div>
+                </TabsContent>
+
+                <TabsContent value="solution" className="py-4">
+                  <ThreatSolutionCard
+                    threatType={selectedAlert.title}
+                    severity={selectedAlert.severity}
+                    onApplySolution={
+                      selectedAlert.status !== 'resolved' && selectedAlert.status !== 'dismissed'
+                        ? () => handleApplySolution(selectedAlert.id)
+                        : undefined
+                    }
+                  />
+                </TabsContent>
+              </Tabs>
 
               <DialogFooter className="gap-2">
                 {selectedAlert.status !== 'dismissed' && selectedAlert.status !== 'resolved' && (
