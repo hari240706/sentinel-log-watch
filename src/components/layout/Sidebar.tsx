@@ -10,6 +10,9 @@ import {
   ChevronRight,
   Moon,
   Sun,
+  Upload,
+  Fingerprint,
+  BarChart3,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
@@ -18,7 +21,10 @@ import { Button } from '@/components/ui/button';
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/logs', label: 'Log Analysis', icon: FileText },
+  { path: '/import', label: 'Log Import', icon: Upload },
   { path: '/alerts', label: 'Threat Alerts', icon: AlertTriangle, badge: true },
+  { path: '/detection', label: 'Detection Rules', icon: Fingerprint },
+  { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
