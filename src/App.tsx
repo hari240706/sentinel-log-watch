@@ -5,7 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { LoadingPage } from "@/components/shared/LoadingSpinner";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
+import AuthPage from "./pages/AuthPage";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const LogsPage = lazy(() => import("./pages/LogsPage"));
@@ -26,13 +28,14 @@ const App = () => (
         <Suspense fallback={<LoadingPage />}>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/logs" element={<LogsPage />} />
-            <Route path="/import" element={<LogImportPage />} />
-            <Route path="/alerts" element={<AlertsPage />} />
-            <Route path="/detection" element={<DetectionRulesPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/logs" element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
+            <Route path="/import" element={<ProtectedRoute><LogImportPage /></ProtectedRoute>} />
+            <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
+            <Route path="/detection" element={<ProtectedRoute><DetectionRulesPage /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           </Routes>
         </Suspense>
       </BrowserRouter>
