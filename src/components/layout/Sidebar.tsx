@@ -1,5 +1,6 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   FileText,
@@ -13,10 +14,15 @@ import {
   Upload,
   Fingerprint,
   BarChart3,
+  LogOut,
+  User,
+  Building2,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -30,9 +36,29 @@ const navItems = [
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { sidebarOpen, setSidebarOpen, darkMode, toggleDarkMode, alerts } = useAppStore();
-  
+  const [userInfo, setUserInfo] = useState<{ name: string; email: string; accountType: string } | null>(null);
+
   const activeAlerts = alerts.filter(a => a.status === 'active' || a.status === 'investigating').length;
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserInfo({
+          name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
+          email: user.email || '',
+          accountType: user.user_metadata?.account_type || 'individual',
+        });
+      }
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success('Logged out successfully');
+    navigate('/auth');
+  };
 
   return (
     <motion.aside
@@ -60,6 +86,27 @@ export function Sidebar() {
           )}
         </Link>
       </div>
+
+      {/* User Info */}
+      {userInfo && (
+        <div className="px-4 py-3 border-b border-sidebar-border">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center shrink-0">
+              {userInfo.accountType === 'organization' ? (
+                <Building2 className="w-4 h-4 text-sidebar-primary" />
+              ) : (
+                <User className="w-4 h-4 text-sidebar-primary" />
+              )}
+            </div>
+            {sidebarOpen && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{userInfo.name}</p>
+                <p className="text-xs text-sidebar-foreground/50 truncate">{userInfo.accountType === 'organization' ? 'Organization' : 'Individual'}</p>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1">
@@ -108,6 +155,16 @@ export function Sidebar() {
         >
           {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           {sidebarOpen && <span className="ml-3">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleLogout}
+          className="w-full justify-start text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10"
+        >
+          <LogOut className="w-5 h-5" />
+          {sidebarOpen && <span className="ml-3">Logout</span>}
         </Button>
         
         <Button

@@ -417,6 +417,9 @@ export default function AlertsPage() {
                   <ThreatSolutionCard
                     threatType={selectedAlert.title}
                     severity={selectedAlert.severity}
+                    description={selectedAlert.description}
+                    source={selectedAlert.source}
+                    affectedSystems={selectedAlert.affectedSystems}
                     onApplySolution={
                       selectedAlert.status !== 'resolved' && selectedAlert.status !== 'dismissed'
                         ? () => handleApplySolution(selectedAlert.id)
