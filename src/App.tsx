@@ -8,6 +8,7 @@ import { LoadingPage } from "@/components/shared/LoadingSpinner";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const LogsPage = lazy(() => import("./pages/LogsPage"));
@@ -29,6 +30,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/logs" element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
             <Route path="/import" element={<ProtectedRoute><LogImportPage /></ProtectedRoute>} />

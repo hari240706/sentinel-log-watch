@@ -192,6 +192,30 @@ export default function AuthPage() {
                 {loading ? 'Please wait...' : authMode === 'login' ? 'Sign In' : 'Create Account'}
                 <ArrowRight className="w-4 h-4" />
               </Button>
+
+              {authMode === 'login' && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!email) {
+                      toast.error('Please enter your email address first');
+                      return;
+                    }
+                    try {
+                      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                        redirectTo: `${window.location.origin}/reset-password`,
+                      });
+                      if (error) throw error;
+                      toast.success('Password reset link sent to your email!');
+                    } catch (err: any) {
+                      toast.error(err.message || 'Failed to send reset link');
+                    }
+                  }}
+                  className="w-full text-sm text-muted-foreground hover:text-primary text-right"
+                >
+                  Forgot password?
+                </button>
+              )}
             </form>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
