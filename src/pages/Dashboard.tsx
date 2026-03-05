@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useDataLoader } from '@/hooks/useDataLoader';
+import { useSystemDetector } from '@/hooks/useSystemDetector';
 import {
   FileText,
   AlertTriangle,
@@ -42,6 +43,7 @@ import {
 export default function Dashboard() {
   const { stats, alerts, logs } = useAppStore();
   useDataLoader();
+  useSystemDetector();
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
   const [liveActivityData, setLiveActivityData] = useState<{ time: string; logs: number; threats: number }[]>([]);
   
