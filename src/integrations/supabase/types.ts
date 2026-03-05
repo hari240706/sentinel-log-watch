@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      alerts: {
+        Row: {
+          affected_systems: string[]
+          created_at: string
+          description: string
+          id: string
+          severity: string
+          source: string
+          status: string
+          timestamp: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          affected_systems?: string[]
+          created_at?: string
+          description: string
+          id?: string
+          severity: string
+          source: string
+          status?: string
+          timestamp?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          affected_systems?: string[]
+          created_at?: string
+          description?: string
+          id?: string
+          severity?: string
+          source?: string
+          status?: string
+          timestamp?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      logs: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          level: string
+          message: string
+          source: string
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          level: string
+          message: string
+          source: string
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          level?: string
+          message?: string
+          source?: string
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]

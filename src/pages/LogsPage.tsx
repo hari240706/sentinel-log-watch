@@ -17,6 +17,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useAppStore, LogEntry } from '@/stores/appStore';
+import { useDataLoader } from '@/hooks/useDataLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -52,7 +53,8 @@ const levelColors = {
 };
 
 export default function LogsPage() {
-  const { logs } = useAppStore();
+  const { logs, fetchLogs } = useAppStore();
+  useDataLoader();
   const [searchTerm, setSearchTerm] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');

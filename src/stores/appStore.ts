@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface LogEntry {
   id: string;
@@ -35,51 +36,35 @@ interface AppState {
   stats: SystemStats;
   sidebarOpen: boolean;
   darkMode: boolean;
+  loading: boolean;
   
   // Actions
   setSidebarOpen: (open: boolean) => void;
   toggleDarkMode: () => void;
-  addLog: (log: LogEntry) => void;
-  addAlert: (alert: ThreatAlert) => void;
-  updateAlertStatus: (id: string, status: ThreatAlert['status']) => void;
-  dismissAlert: (id: string) => void;
+  addLog: (log: Omit<LogEntry, 'id'>) => Promise<void>;
+  addAlert: (alert: Omit<ThreatAlert, 'id'>) => Promise<void>;
+  updateAlertStatus: (id: string, status: ThreatAlert['status']) => Promise<void>;
+  dismissAlert: (id: string) => Promise<void>;
+  fetchLogs: () => Promise<void>;
+  fetchAlerts: () => Promise<void>;
+  setLogs: (logs: LogEntry[]) => void;
+  setAlerts: (alerts: ThreatAlert[]) => void;
 }
 
-// Mock data for demonstration
-const mockLogs: LogEntry[] = [
-  { id: '1', timestamp: '2024-01-21T10:32:15Z', source: 'Firewall-01', level: 'error', message: 'Blocked unauthorized access attempt from 192.168.1.100', details: 'Port scan detected on ports 22, 80, 443' },
-  { id: '2', timestamp: '2024-01-21T10:30:45Z', source: 'Server-Web-01', level: 'warning', message: 'High CPU usage detected (92%)', details: 'Process: node.exe consuming 85% CPU' },
-  { id: '3', timestamp: '2024-01-21T10:28:22Z', source: 'Database-01', level: 'info', message: 'Backup completed successfully', details: 'Full backup size: 2.3GB' },
-  { id: '4', timestamp: '2024-01-21T10:25:11Z', source: 'Auth-Server', level: 'critical', message: 'Multiple failed login attempts detected', details: '15 failed attempts from IP 10.0.0.55 in last 5 minutes' },
-  { id: '5', timestamp: '2024-01-21T10:22:08Z', source: 'Network-Switch-02', level: 'info', message: 'Link state change detected', details: 'Port 24 changed from up to down' },
-  { id: '6', timestamp: '2024-01-21T10:18:33Z', source: 'IDS-Sensor-01', level: 'warning', message: 'Suspicious DNS query pattern detected', details: 'Potential DNS tunneling activity from 192.168.5.22' },
-  { id: '7', timestamp: '2024-01-21T10:15:19Z', source: 'Endpoint-PC-045', level: 'error', message: 'Malware signature detected', details: 'Trojan.GenericKD.46584721 quarantined' },
-  { id: '8', timestamp: '2024-01-21T10:12:55Z', source: 'VPN-Gateway', level: 'info', message: 'New VPN connection established', details: 'User: admin@corp from 203.0.113.50' },
-];
-
-const mockAlerts: ThreatAlert[] = [
-  { id: 'a1', timestamp: '2024-01-21T10:32:15Z', severity: 'critical', title: 'Brute Force Attack Detected', description: 'Multiple failed authentication attempts detected from external IP', source: 'Auth-Server', status: 'active', affectedSystems: ['Auth-Server', 'VPN-Gateway'] },
-  { id: 'a2', timestamp: '2024-01-21T10:28:00Z', severity: 'high', title: 'Malware Detection', description: 'Trojan signature identified and quarantined on endpoint', source: 'Endpoint-PC-045', status: 'investigating', affectedSystems: ['Endpoint-PC-045'] },
-  { id: 'a3', timestamp: '2024-01-21T10:18:33Z', severity: 'medium', title: 'DNS Tunneling Suspected', description: 'Unusual DNS query patterns may indicate data exfiltration attempt', source: 'IDS-Sensor-01', status: 'investigating', affectedSystems: ['Workstation-22', 'DNS-Server'] },
-  { id: 'a4', timestamp: '2024-01-21T09:45:22Z', severity: 'low', title: 'Port Scan Detected', description: 'External reconnaissance activity blocked by firewall', source: 'Firewall-01', status: 'resolved', affectedSystems: ['Firewall-01'] },
-  { id: 'a5', timestamp: '2024-01-21T09:15:10Z', severity: 'info', title: 'System Patch Available', description: 'Critical security update available for Windows servers', source: 'Patch-Manager', status: 'active', affectedSystems: ['Server-Web-01', 'Server-App-02', 'Database-01'] },
-];
-
-const mockStats: SystemStats = {
-  totalLogs: 15847,
-  activeThreats: 3,
-  resolvedThreats: 42,
-  systemsMonitored: 156,
-  logsProcessedToday: 2847,
-  avgResponseTime: '1.2s',
-};
-
-export const useAppStore = create<AppState>((set) => ({
-  logs: mockLogs,
-  alerts: mockAlerts,
-  stats: mockStats,
+export const useAppStore = create<AppState>((set, get) => ({
+  logs: [],
+  alerts: [],
+  stats: {
+    totalLogs: 0,
+    activeThreats: 0,
+    resolvedThreats: 0,
+    systemsMonitored: 156,
+    logsProcessedToday: 0,
+    avgResponseTime: '1.2s',
+  },
   sidebarOpen: true,
   darkMode: false,
+  loading: false,
 
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   
@@ -93,19 +78,148 @@ export const useAppStore = create<AppState>((set) => ({
     return { darkMode: newDarkMode };
   }),
 
-  addLog: (log) => set((state) => ({ logs: [log, ...state.logs] })),
-  
-  addAlert: (alert) => set((state) => ({ alerts: [alert, ...state.alerts] })),
-  
-  updateAlertStatus: (id, status) => set((state) => ({
-    alerts: state.alerts.map((alert) =>
-      alert.id === id ? { ...alert, status } : alert
-    ),
-  })),
+  setLogs: (logs) => set({ logs }),
+  setAlerts: (alerts) => set({ alerts }),
 
-  dismissAlert: (id) => set((state) => ({
-    alerts: state.alerts.map((alert) =>
-      alert.id === id ? { ...alert, status: 'dismissed' as const } : alert
-    ),
-  })),
+  fetchLogs: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('logs')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(500);
+    
+    if (!error && data) {
+      const logs: LogEntry[] = data.map(row => ({
+        id: row.id,
+        timestamp: row.timestamp,
+        source: row.source,
+        level: row.level as LogEntry['level'],
+        message: row.message,
+        details: row.details ?? undefined,
+      }));
+      set({ logs });
+    }
+  },
+
+  fetchAlerts: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('alerts')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(500);
+    
+    if (!error && data) {
+      const alerts: ThreatAlert[] = data.map(row => ({
+        id: row.id,
+        timestamp: row.timestamp,
+        severity: row.severity as ThreatAlert['severity'],
+        title: row.title,
+        description: row.description,
+        source: row.source,
+        status: row.status as ThreatAlert['status'],
+        affectedSystems: row.affected_systems ?? [],
+      }));
+      set({ alerts });
+    }
+  },
+
+  addLog: async (log) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('logs')
+      .insert({
+        user_id: user.id,
+        timestamp: log.timestamp,
+        source: log.source,
+        level: log.level,
+        message: log.message,
+        details: log.details ?? null,
+      })
+      .select()
+      .single();
+    
+    if (!error && data) {
+      const newLog: LogEntry = {
+        id: data.id,
+        timestamp: data.timestamp,
+        source: data.source,
+        level: data.level as LogEntry['level'],
+        message: data.message,
+        details: data.details ?? undefined,
+      };
+      set((state) => ({ logs: [newLog, ...state.logs] }));
+    }
+  },
+  
+  addAlert: async (alert) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('alerts')
+      .insert({
+        user_id: user.id,
+        timestamp: alert.timestamp,
+        severity: alert.severity,
+        title: alert.title,
+        description: alert.description,
+        source: alert.source,
+        status: alert.status,
+        affected_systems: alert.affectedSystems,
+      })
+      .select()
+      .single();
+    
+    if (!error && data) {
+      const newAlert: ThreatAlert = {
+        id: data.id,
+        timestamp: data.timestamp,
+        severity: data.severity as ThreatAlert['severity'],
+        title: data.title,
+        description: data.description,
+        source: data.source,
+        status: data.status as ThreatAlert['status'],
+        affectedSystems: data.affected_systems ?? [],
+      };
+      set((state) => ({ alerts: [newAlert, ...state.alerts] }));
+    }
+  },
+  
+  updateAlertStatus: async (id, status) => {
+    const { error } = await supabase
+      .from('alerts')
+      .update({ status })
+      .eq('id', id);
+    
+    if (!error) {
+      set((state) => ({
+        alerts: state.alerts.map((alert) =>
+          alert.id === id ? { ...alert, status } : alert
+        ),
+      }));
+    }
+  },
+
+  dismissAlert: async (id) => {
+    const { error } = await supabase
+      .from('alerts')
+      .update({ status: 'dismissed' })
+      .eq('id', id);
+    
+    if (!error) {
+      set((state) => ({
+        alerts: state.alerts.map((alert) =>
+          alert.id === id ? { ...alert, status: 'dismissed' as const } : alert
+        ),
+      }));
+    }
+  },
 }));
