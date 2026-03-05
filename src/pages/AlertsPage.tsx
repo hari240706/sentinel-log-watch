@@ -20,6 +20,7 @@ import { ThreatSolutionCard } from '@/components/threats/ThreatSolutionCard';
 import { ThreatComparisonChart } from '@/components/threats/ThreatComparisonChart';
 import { useAppStore, ThreatAlert } from '@/stores/appStore';
 import { useRealTimeData, useThreatComparisonData } from '@/hooks/useRealTimeData';
+import { useDataLoader } from '@/hooks/useDataLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +53,7 @@ const statusConfig = {
 
 export default function AlertsPage() {
   const { alerts, updateAlertStatus, dismissAlert } = useAppStore();
+  useDataLoader();
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');

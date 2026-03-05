@@ -58,12 +58,11 @@ function getRandomItem<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function generateLog(): LogEntry {
+function generateLog(): Omit<LogEntry, 'id'> {
   const level = getRandomItem(LOG_LEVELS);
   const messages = LOG_MESSAGES[level];
   
   return {
-    id: generateRandomId(),
     timestamp: new Date().toISOString(),
     source: getRandomItem(LOG_SOURCES),
     level,
@@ -72,11 +71,10 @@ function generateLog(): LogEntry {
   };
 }
 
-function generateThreat(): ThreatAlert {
+function generateThreat(): Omit<ThreatAlert, 'id'> {
   const template = getRandomItem(THREAT_TEMPLATES);
   
   return {
-    id: generateRandomId(),
     timestamp: new Date().toISOString(),
     severity: template.severity || getRandomItem(SEVERITIES),
     title: template.title || 'Security Alert',

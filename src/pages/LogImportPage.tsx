@@ -26,16 +26,13 @@ interface ImportResult {
   total: number;
   imported: number;
   errors: number;
-  logs: LogEntry[];
+  logs: Omit<LogEntry, 'id'>[];
 }
 
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 9);
-}
 
 function parseSyslog(text: string): ImportResult {
   const lines = text.trim().split('\n').filter(l => l.trim());
-  const logs: LogEntry[] = [];
+  const logs: Omit<LogEntry, 'id'>[] = [];
   let errors = 0;
 
   for (const line of lines) {
@@ -45,7 +42,6 @@ function parseSyslog(text: string): ImportResult {
         : line.toLowerCase().includes('crit') ? 'critical'
         : 'info';
       logs.push({
-        id: generateId(),
         timestamp: new Date().toISOString(),
         source: 'Syslog-Import',
         level,
@@ -62,7 +58,7 @@ function parseSyslog(text: string): ImportResult {
 
 function parseJSON(text: string): ImportResult {
   let errors = 0;
-  const logs: LogEntry[] = [];
+  const logs: Omit<LogEntry, 'id'>[] = [];
 
   try {
     const data = JSON.parse(text);
@@ -71,7 +67,6 @@ function parseJSON(text: string): ImportResult {
     for (const entry of entries) {
       try {
         logs.push({
-          id: generateId(),
           timestamp: entry.timestamp || new Date().toISOString(),
           source: entry.source || entry.hostname || 'JSON-Import',
           level: (['info', 'warning', 'error', 'critical'].includes(entry.level?.toLowerCase()) ? entry.level.toLowerCase() : 'info') as LogEntry['level'],
@@ -93,7 +88,7 @@ function parseCSV(text: string): ImportResult {
   if (lines.length < 2) return { total: 0, imported: 0, errors: 1, logs: [] };
 
   const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const logs: LogEntry[] = [];
+  const logs: Omit<LogEntry, 'id'>[] = [];
   let errors = 0;
 
   for (let i = 1; i < lines.length; i++) {
@@ -103,7 +98,6 @@ function parseCSV(text: string): ImportResult {
       headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
 
       logs.push({
-        id: generateId(),
         timestamp: row.timestamp || row.date || new Date().toISOString(),
         source: row.source || row.host || 'CSV-Import',
         level: (['info', 'warning', 'error', 'critical'].includes(row.level?.toLowerCase()) ? row.level.toLowerCase() : 'info') as LogEntry['level'],
@@ -127,7 +121,7 @@ export default function LogImportPage() {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const processImport = useCallback((text: string, format: 'json' | 'csv' | 'syslog') => {
+  const processImport = useCallback(async (text: string, format: 'json' | 'csv' | 'syslog') => {
     setImporting(true);
     setProgress(0);
 
@@ -135,25 +129,24 @@ export default function LogImportPage() {
       setProgress(prev => Math.min(prev + 20, 90));
     }, 200);
 
-    setTimeout(() => {
-      clearInterval(interval);
-      setProgress(100);
+    // Parse
+    let result: ImportResult;
+    if (format === 'json') result = parseJSON(text);
+    else if (format === 'csv') result = parseCSV(text);
+    else result = parseSyslog(text);
 
-      let result: ImportResult;
-      if (format === 'json') result = parseJSON(text);
-      else if (format === 'csv') result = parseCSV(text);
-      else result = parseSyslog(text);
+    // Add logs to DB
+    for (const log of result.logs) {
+      await addLog(log);
+    }
 
-      setImportResult(result);
-
-      // Add logs to store
-      result.logs.forEach(log => addLog(log));
-
-      setImporting(false);
-      toast.success(`Imported ${result.imported} logs successfully`, {
-        description: result.errors > 0 ? `${result.errors} entries had errors` : undefined,
-      });
-    }, 1200);
+    clearInterval(interval);
+    setProgress(100);
+    setImportResult(result);
+    setImporting(false);
+    toast.success(`Imported ${result.imported} logs successfully`, {
+      description: result.errors > 0 ? `${result.errors} entries had errors` : undefined,
+    });
   }, [addLog]);
 
   const handleFileDrop = useCallback((e: React.DragEvent) => {
