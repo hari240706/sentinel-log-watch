@@ -122,6 +122,54 @@ export type Database = {
         }
         Relationships: []
       }
+      sessions: {
+        Row: {
+          browser: string | null
+          browser_version: string | null
+          device_os: string | null
+          id: string
+          is_active: boolean
+          language: string | null
+          last_active_at: string
+          platform: string | null
+          screen_resolution: string | null
+          started_at: string
+          timezone: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          browser_version?: string | null
+          device_os?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string | null
+          last_active_at?: string
+          platform?: string | null
+          screen_resolution?: string | null
+          started_at?: string
+          timezone?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          browser_version?: string | null
+          device_os?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string | null
+          last_active_at?: string
+          platform?: string | null
+          screen_resolution?: string | null
+          started_at?: string
+          timezone?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
