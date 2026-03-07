@@ -51,7 +51,7 @@ The system is designed to be portable, efficient, and suitable for critical infr
 
 ### Clone the Repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/hari240706/sentinel-log-watch.git
 
 cd project-name
 
