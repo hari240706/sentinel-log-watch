@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Monitor,
@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -17,6 +19,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+
+const PAGE_SIZE = 6;
 
 interface Session {
   id: string;
@@ -35,6 +39,7 @@ interface Session {
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -42,7 +47,7 @@ export default function SessionsPage() {
       .from('sessions')
       .select('*')
       .order('last_active_at', { ascending: false })
-      .limit(50);
+      .limit(200);
     if (data) setSessions(data);
     setLoading(false);
   };
@@ -50,6 +55,12 @@ export default function SessionsPage() {
   useEffect(() => {
     fetchSessions();
   }, []);
+
+  const totalPages = Math.max(1, Math.ceil(sessions.length / PAGE_SIZE));
+  const paginatedSessions = useMemo(
+    () => sessions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [sessions, page]
+  );
 
   const formatTime = (ts: string) => new Date(ts).toLocaleString();
 
@@ -96,75 +107,109 @@ export default function SessionsPage() {
           description="Session data will appear after you log in"
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {sessions.map((session, idx) => {
-            const DeviceIcon = getDeviceIcon(session.device_os);
-            return (
-              <motion.div
-                key={session.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-              >
-                <Card className={cn(
-                  'cyber-card transition-all',
-                  session.is_active && 'border-primary/40'
-                )}>
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          'w-10 h-10 rounded-lg flex items-center justify-center',
-                          session.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                        )}>
-                          <DeviceIcon className="w-5 h-5" />
+        <>
+          <div className="grid gap-4 md:grid-cols-2">
+            {paginatedSessions.map((session, idx) => {
+              const DeviceIcon = getDeviceIcon(session.device_os);
+              return (
+                <motion.div
+                  key={session.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                >
+                  <Card className={cn(
+                    'cyber-card transition-all',
+                    session.is_active && 'border-primary/40'
+                  )}>
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            'w-10 h-10 rounded-lg flex items-center justify-center',
+                            session.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                          )}>
+                            <DeviceIcon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">
+                              {session.browser ?? 'Unknown'} {session.browser_version ? `v${session.browser_version.split('.')[0]}` : ''}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {session.device_os ?? 'Unknown OS'}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            {session.browser ?? 'Unknown'} {session.browser_version ? `v${session.browser_version.split('.')[0]}` : ''}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {session.device_os ?? 'Unknown OS'}
-                          </p>
+                        <Badge variant={session.is_active ? 'default' : 'secondary'} className="gap-1">
+                          {session.is_active ? (
+                            <><CheckCircle2 className="w-3 h-3" /> Active</>
+                          ) : (
+                            <><XCircle className="w-3 h-3" /> Inactive</>
+                          )}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Monitor className="w-3.5 h-3.5" />
+                          <span>{session.screen_resolution ?? '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Globe className="w-3.5 h-3.5" />
+                          <span className="truncate">{session.timezone ?? '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Started {timeSince(session.started_at)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Active {timeSince(session.last_active_at)}</span>
                         </div>
                       </div>
-                      <Badge variant={session.is_active ? 'default' : 'secondary'} className="gap-1">
-                        {session.is_active ? (
-                          <><CheckCircle2 className="w-3 h-3" /> Active</>
-                        ) : (
-                          <><XCircle className="w-3 h-3" /> Inactive</>
-                        )}
-                      </Badge>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Monitor className="w-3.5 h-3.5" />
-                        <span>{session.screen_resolution ?? '—'}</span>
+                      <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+                        <span>{session.platform ?? ''} · {session.language ?? ''} · Started {formatTime(session.started_at)}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Globe className="w-3.5 h-3.5" />
-                        <span className="truncate">{session.timezone ?? '—'}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>Started {timeSince(session.started_at)}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>Active {timeSince(session.last_active_at)}</span>
-                      </div>
-                    </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
 
-                    <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
-                      <span>{session.platform ?? ''} · {session.language ?? ''} · Started {formatTime(session.started_at)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <p className="text-sm text-muted-foreground">
+                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sessions.length)} of {sessions.length} sessions
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 0}
+                  onClick={() => setPage(p => p - 1)}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {page + 1} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </MainLayout>
   );
