@@ -31,6 +31,7 @@ const navItems = [
   { path: '/alerts', label: 'Threat Alerts', icon: AlertTriangle, badge: true },
   { path: '/detection', label: 'Detection Rules', icon: Fingerprint },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
+  { path: '/sessions', label: 'Sessions', icon: Monitor },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
