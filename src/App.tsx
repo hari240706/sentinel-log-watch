@@ -17,6 +17,7 @@ const AlertsPage = lazy(() => import("./pages/AlertsPage"));
 const DetectionRulesPage = lazy(() => import("./pages/DetectionRulesPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const SessionsPage = lazy(() => import("./pages/SessionsPage"));
 
 const queryClient = new QueryClient();
 
