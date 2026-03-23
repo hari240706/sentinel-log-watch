@@ -17,6 +17,7 @@ import {
   LogOut,
   User,
   Building2,
+  Monitor,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { supabase } from '@/integrations/supabase/client';

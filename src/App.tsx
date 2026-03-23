@@ -39,6 +39,7 @@ const App = () => (
             <Route path="/detection" element={<ProtectedRoute><DetectionRulesPage /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/sessions" element={<ProtectedRoute><SessionsPage /></ProtectedRoute>} />
           </Routes>
         </Suspense>
       </BrowserRouter>
