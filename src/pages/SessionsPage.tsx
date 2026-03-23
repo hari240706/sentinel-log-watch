@@ -10,6 +10,8 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  Power,
+  Filter,
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -17,8 +19,16 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const PAGE_SIZE = 6;
 
@@ -40,6 +50,8 @@ export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [terminatingId, setTerminatingId] = useState<string | null>(null);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -56,11 +68,35 @@ export default function SessionsPage() {
     fetchSessions();
   }, []);
 
-  const totalPages = Math.max(1, Math.ceil(sessions.length / PAGE_SIZE));
+  const filteredSessions = useMemo(() => {
+    if (statusFilter === 'all') return sessions;
+    return sessions.filter(s => statusFilter === 'active' ? s.is_active : !s.is_active);
+  }, [sessions, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSessions.length / PAGE_SIZE));
   const paginatedSessions = useMemo(
-    () => sessions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-    [sessions, page]
+    () => filteredSessions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filteredSessions, page]
   );
+
+  // Reset page when filter changes
+  useEffect(() => { setPage(0); }, [statusFilter]);
+
+  const terminateSession = async (sessionId: string) => {
+    setTerminatingId(sessionId);
+    const { error } = await supabase
+      .from('sessions')
+      .update({ is_active: false })
+      .eq('id', sessionId);
+
+    if (error) {
+      toast.error('Failed to terminate session');
+    } else {
+      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, is_active: false } : s));
+      toast.success('Session terminated');
+    }
+    setTerminatingId(null);
+  };
 
   const formatTime = (ts: string) => new Date(ts).toLocaleString();
 
@@ -81,6 +117,9 @@ export default function SessionsPage() {
     return Monitor;
   };
 
+  const activeCt = sessions.filter(s => s.is_active).length;
+  const inactiveCt = sessions.length - activeCt;
+
   return (
     <MainLayout>
       <PageHeader
@@ -94,17 +133,32 @@ export default function SessionsPage() {
         }
       />
 
+      {/* Filter bar */}
+      <div className="flex items-center gap-3 mb-6">
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+          <SelectTrigger className="w-[180px]">
+            <Filter className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Filter" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sessions ({sessions.length})</SelectItem>
+            <SelectItem value="active">Active ({activeCt})</SelectItem>
+            <SelectItem value="inactive">Inactive ({inactiveCt})</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2">
           {[1, 2, 3].map(i => (
             <Card key={i} className="cyber-card animate-pulse h-40" />
           ))}
         </div>
-      ) : sessions.length === 0 ? (
+      ) : filteredSessions.length === 0 ? (
         <EmptyState
           icon={Monitor}
           title="No sessions found"
-          description="Session data will appear after you log in"
+          description={statusFilter !== 'all' ? 'Try changing the filter' : 'Session data will appear after you log in'}
         />
       ) : (
         <>
@@ -140,13 +194,15 @@ export default function SessionsPage() {
                             </p>
                           </div>
                         </div>
-                        <Badge variant={session.is_active ? 'default' : 'secondary'} className="gap-1">
-                          {session.is_active ? (
-                            <><CheckCircle2 className="w-3 h-3" /> Active</>
-                          ) : (
-                            <><XCircle className="w-3 h-3" /> Inactive</>
-                          )}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={session.is_active ? 'default' : 'secondary'} className="gap-1">
+                            {session.is_active ? (
+                              <><CheckCircle2 className="w-3 h-3" /> Active</>
+                            ) : (
+                              <><XCircle className="w-3 h-3" /> Inactive</>
+                            )}
+                          </Badge>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-sm">
@@ -168,8 +224,22 @@ export default function SessionsPage() {
                         </div>
                       </div>
 
-                      <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
-                        <span>{session.platform ?? ''} · {session.language ?? ''} · Started {formatTime(session.started_at)}</span>
+                      <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          {session.platform ?? ''} · {session.language ?? ''} · Started {formatTime(session.started_at)}
+                        </span>
+                        {session.is_active && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            disabled={terminatingId === session.id}
+                            onClick={() => terminateSession(session.id)}
+                          >
+                            <Power className="w-3 h-3" />
+                            {terminatingId === session.id ? 'Terminating...' : 'Terminate'}
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -182,7 +252,7 @@ export default function SessionsPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-6">
               <p className="text-sm text-muted-foreground">
-                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sessions.length)} of {sessions.length} sessions
+                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filteredSessions.length)} of {filteredSessions.length} sessions
               </p>
               <div className="flex items-center gap-2">
                 <Button
