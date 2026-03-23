@@ -17,6 +17,7 @@ import {
   LogOut,
   User,
   Building2,
+  Monitor,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,7 @@ const navItems = [
   { path: '/alerts', label: 'Threat Alerts', icon: AlertTriangle, badge: true },
   { path: '/detection', label: 'Detection Rules', icon: Fingerprint },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
+  { path: '/sessions', label: 'Sessions', icon: Monitor },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 

@@ -17,6 +17,7 @@ const AlertsPage = lazy(() => import("./pages/AlertsPage"));
 const DetectionRulesPage = lazy(() => import("./pages/DetectionRulesPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const SessionsPage = lazy(() => import("./pages/SessionsPage"));
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/detection" element={<ProtectedRoute><DetectionRulesPage /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/sessions" element={<ProtectedRoute><SessionsPage /></ProtectedRoute>} />
           </Routes>
         </Suspense>
       </BrowserRouter>
